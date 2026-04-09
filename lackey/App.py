@@ -172,9 +172,33 @@ class App(object):
             self._pid = self._process.pid
         elif self._title != "":
             # Capture an existing window that matches self._title
-            self._pid = PlatformManager.getWindowPID(
+            _pid = PlatformManager.getWindowPID(
                 PlatformManager.getWindowByTitle(
                     re.escape(self._title)))
+            
+            if _pid != -1:
+                self._pid = _pid
+            else:
+                if platform.system() == "Windows":
+                    try:
+                        # Extract the command and parameters to pass to Start-Process safely
+                        cmd = self._title.split(" ")[0]
+                        args_str = " ".join(self._title.split(" ")[1:]) if " " in self._title else ""
+                        
+                        # Use PowerShell's Start-Process which properly resolves App Paths (such as chrome)
+                        script_block = "& { if ([string]::IsNullOrWhiteSpace($args[1])) { $p = Start-Process -FilePath $args[0] -PassThru -ErrorAction SilentlyContinue } else { $p = Start-Process -FilePath $args[0] -ArgumentList $args[1] -PassThru -ErrorAction SilentlyContinue }; if ($p) { $p.Id } }"
+                        
+                        proc = subprocess.Popen(
+                            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script_block, cmd, args_str],
+                            shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                        )
+                        stdout, _ = proc.communicate()
+                        
+                        if stdout.strip().isdigit():
+                            self._pid = int(stdout.strip())
+                            self._process = None # Process is detached
+                    except Exception:
+                        pass
         time.sleep(waitTime)
         return self
 
