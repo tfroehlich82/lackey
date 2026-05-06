@@ -81,10 +81,11 @@ class Location(object):
           with this point as one corner, expanding in the specified direction
         
         """
+        from .RegionMatching import Region
         if len(args) == 1:
-            return Region.grow(self.x, self.y, args[0], args[0])
+            return Region(self.x-args[0], self.y-args[0], args[0]*2, args[0]*2)
         elif len(args) == 2:
-            return Region(self.x, self.y, args[0], args[1])
+            return Region(self.x-(args[0]/2), self.y-(args[1]/2), args[0], args[1])
         elif len(args) == 4:
             return Region.create(self, *args)
         else:
